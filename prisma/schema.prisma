@@ -1,0 +1,153 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  USER
+}
+
+model User {
+  id            String          @id @default(auto()) @map("_id") @db.ObjectId
+  name          String?
+  email         String?         @unique
+  emailVerified DateTime?
+  image         String?
+  accounts      Account[]
+  sessions      Session[]
+  role          UserRole?       @default(ADMIN)
+  // Optional for WebAuthn support
+  Authenticator Authenticator[]
+  purchases     Purchase[]
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  number        String?
+  location      String?
+  city          String?
+  landmark      String?
+  address       String?
+  products      Product[]
+  review        Review[]
+  cart          Cart[]
+  gender        String?
+}
+
+model Purchase {
+  id             String    @id @default(cuid()) @map("_id")
+  productName    String
+  price          Float
+  quantity       Int
+  imageUrl       String[]
+  productId      String?
+  fee            Float
+  purchaseDate   DateTime  @default(now())
+  discount       Float?
+  deliveryDate   DateTime?
+  deliveryStatus String?   @default("pending")
+  userId         String
+  user           User      @relation(fields: [userId], references: [id])
+}
+
+model Product {
+  id            String   @id @default(cuid()) @map("_id")
+  description   String
+  name          String
+  price         Float
+  imageUrl      String[]
+  quantity      Float
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  brend         String
+  category      String
+  sellprice     Float?
+  discountprice Float?
+  discount      Float?
+  review        Review[]
+}
+
+model Cart {
+  id            String   @id @default(cuid()) @map("_id")
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  productId     String[]
+  quantity      Float[]
+
+}
+
+model Review {
+  id          String   @id @default(cuid()) @map("_id")
+  description String
+  rating      Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id])
+  imageUrl    String[]
+}
+
+model Account {
+  id                String  @id @default(auto()) @map("_id") @db.ObjectId
+  userId            String  @db.ObjectId
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.String
+  access_token      String? @db.String
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.String
+  session_state     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  sessionToken String   @unique
+  userId       String   @db.ObjectId
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model VerificationToken {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// Optional for WebAuthn support
+model Authenticator {
+  credentialID         String  @id @map("_id")
+  userId               String  @db.ObjectId
+  providerAccountId    String
+  credentialPublicKey  String
+  counter              Int
+  credentialDeviceType String
+  credentialBackedUp   Boolean
+  transports           String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, credentialID])
+}
